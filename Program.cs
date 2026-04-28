@@ -1,9 +1,13 @@
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ToDoList.Data;
+using ToDoList.Middleware;
+using ToDoList.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRateLimiter(options =>
@@ -22,6 +26,8 @@ builder.Services.AddRateLimiter(options =>
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<UserRegisterValidator>();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -56,6 +62,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication(); // Önce kimlik kontrolü
 app.UseAuthorization();  // Sonra yetki kontrolü
+app.UseMiddleware<ExceptionMiddleware>();
 app.UseRateLimiter();
 
 
