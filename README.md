@@ -52,3 +52,13 @@ Tüm Todo istekleri Authorization: Bearer <token> başlığı gerektirir.
 Bir kullanıcı, başka bir kullanıcının ID'sini bilse dahi o görevi güncelleyemez veya silemez (403 Forbidden).
 
 Hatalı girişlerde ve yetkisiz erişimlerde standart HTTP 401/400 hataları döndürülür.
+
+
+
+🔐 Refresh Token Mekanizması: Access Token süresi dolsa bile kullanıcı deneyimini kesintiye uğratmadan güvenli oturum yönetimi sağlandı.
+
+🛡️ Rate Limiting (Hız Sınırlama): Sunucuyu brute-force ve spam isteklerden korumak amacıyla saniyede X istek sınırı uygulandı (429 Too Many Requests).
+
+🧪 Unit Testing (xUnit & Moq): İş mantığı, InMemory Database kullanılarak yazılan birim testleri ile %100 doğrulandı. Sahiplik kontrolü ve veri izolasyonu test edildi.
+
+🔍 Dinamik Filtreleme & Sıralama: Görevler arasında başlığa göre arama, tamamlanma durumuna göre filtreleme ve tarihe/isne göre sıralama özellikleri eklendi.
