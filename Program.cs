@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ToDoList.Data;
+using ToDoList.Mappings;
 using ToDoList.Middleware;
+using ToDoList.Repositories;
 using ToDoList.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,8 +24,11 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueLimit = 0; // Kuyruğu sıfırla ki direkt reddetsin
     });
 });
-
+builder.Services.AddAutoMapper(typeof(ToDoList.Mappings.MappingProfile));
+// MappingProfile sınıfının bulunduğu Assembly'i (projeyi) tara ve kaydet
+builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 // Add services to the container.
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 builder.Services.AddControllers();
 builder.Services.AddFluentValidationAutoValidation();

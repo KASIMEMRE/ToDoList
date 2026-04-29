@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using System.Security.Claims;
 using ToDoList.Data;
 using ToDoList.Models;
 using ToDoList.Models.Dtos;
+using ToDoList.Repositories;
 
 [EnableRateLimiting("sabit")]
 [Route("api/[controller]")]
@@ -13,14 +15,16 @@ using ToDoList.Models.Dtos;
 [Authorize] 
 public class TodosController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
 
-    public TodosController(AppDbContext context)
+    public TodosController(IUnitOfWork unitOfWork, IMapper mapper)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
+        _mapper = mapper;
     }
 
-   
+
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     
@@ -34,7 +38,7 @@ public class TodosController : ControllerBase
     {
         var userId = GetUserId();
 
-        var query = _context.Todos.Where(t => t.UserId == userId).AsQueryable();
+        var query = (await _unitOfWork.Todos.GetByConditionAsync(t => t.UserId == userId)).AsQueryable();
 
         
         if (!string.IsNullOrEmpty(search))
@@ -66,7 +70,7 @@ public class TodosController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var userId = GetUserId();
-        var todo = await _context.Todos.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+        var todo = (await _unitOfWork.Todos.GetByConditionAsync(t => t.Id == id && t.UserId == userId)).FirstOrDefault();
 
         if (todo == null) return NotFound(new { message = "Görev bulunamadı." });
         return Ok(todo);
@@ -83,8 +87,8 @@ public class TodosController : ControllerBase
             UserId = GetUserId()
         };
 
-        _context.Todos.Add(todo);
-        await _context.SaveChangesAsync();
+        await _unitOfWork.Todos.AddAsync(todo);
+        await _unitOfWork.SaveChangesAsync();
         return CreatedAtAction(nameof(GetById), new { id = todo.Id }, todo);
     }
 
@@ -94,14 +98,14 @@ public class TodosController : ControllerBase
     {
         var userId = GetUserId();
         
-        var todo = await _context.Todos.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+        var todo = (await _unitOfWork.Todos.GetByConditionAsync(t => t.Id == id && t.UserId == userId)).FirstOrDefault();
 
         if (todo == null) return StatusCode(403, new { message = "Bu görevi güncelleme yetkiniz yok!" });
 
         todo.Title = dto.Title;
         todo.Description = dto.Description;
         
-        await _context.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
         return Ok(todo);
     }
 
@@ -110,12 +114,12 @@ public class TodosController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var userId = GetUserId();
-        var todo = await _context.Todos.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+        var todo = (await _unitOfWork.Todos.GetByConditionAsync(t => t.Id == id && t.UserId == userId)).FirstOrDefault();
 
         if (todo == null) return StatusCode(403, new { message = "Bu görevi silme yetkiniz yok!" });
 
-        _context.Todos.Remove(todo);
-        await _context.SaveChangesAsync();
+        _unitOfWork.Todos.Delete(todo);
+        await _unitOfWork.SaveChangesAsync();
         return NoContent(); 
     }
 }

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -9,6 +10,7 @@ using System.Text;
 using ToDoList.Data;
 using ToDoList.Models;
 using ToDoList.Models.Dtos;
+using ToDoList.Repositories;
 
 namespace ToDoList.Controllers
 {
@@ -16,12 +18,14 @@ namespace ToDoList.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly IUnitOfWork _unitOfWork; // Context yerine UnitOfWork
+        private readonly IMapper _mapper;         // Manuel eşleme yerine AutoMapper
         private readonly IConfiguration _configuration;
 
-        public AuthController(AppDbContext context, IConfiguration configuration)
+        public AuthController(IUnitOfWork unitOfWork, IMapper mapper, IConfiguration configuration)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
+            _mapper = mapper;
             _configuration = configuration;
         }
 
@@ -29,22 +33,19 @@ namespace ToDoList.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserRegisterDto request)
         {
-            if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+            // Repository üzerinden kullanıcı kontrolü
+            var allUsers = await _unitOfWork.Users.GetAllAsync();
+            if (allUsers.Any(u => u.Email == request.Email))
                 return BadRequest("Bu e-posta adresi zaten kullanımda.");
 
-            string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            // AutoMapper ile DTO -> Model dönüşümü
+            var user = _mapper.Map<User>(request);
 
-            var user = new User
-            {
-                Name = request.Name,
-                Email = request.Email,
-                Password = passwordHash
-            };
+            user.Password = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-            await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Users.AddAsync(user);
+            await _unitOfWork.SaveChangesAsync(); // Değişiklikleri kaydet
 
-            
             return await GenerateAndReturnTokens(user);
         }
 
@@ -52,7 +53,8 @@ namespace ToDoList.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(UserLoginDto request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            var allUsers = await _unitOfWork.Users.GetAllAsync();
+            var user = allUsers.FirstOrDefault(u => u.Email == request.Email);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
                 return BadRequest("Hatalı e-posta veya şifre.");
@@ -63,7 +65,8 @@ namespace ToDoList.Controllers
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] string refreshToken)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+            var allUsers = await _unitOfWork.Users.GetByConditionAsync(u => u.RefreshToken == refreshToken);
+            var user = allUsers.FirstOrDefault();
 
             if (user == null)
                 return Unauthorized("Geçersiz Refresh Token.");
@@ -74,24 +77,19 @@ namespace ToDoList.Controllers
             return await GenerateAndReturnTokens(user);
         }
 
-        
         private async Task<IActionResult> GenerateAndReturnTokens(User user)
         {
             var token = CreateToken(user);
             var refreshToken = GenerateRefreshToken();
 
-            
             user.RefreshToken = refreshToken;
             user.TokenCreated = DateTime.Now;
-            user.TokenExpires = DateTime.Now.AddDays(7); // 7 günlük ömür
+            user.TokenExpires = DateTime.Now.AddDays(7);
 
-            await _context.SaveChangesAsync();
+            _unitOfWork.Users.Update(user); // Repository üzerinden güncelleme
+            await _unitOfWork.SaveChangesAsync();
 
-            return Ok(new
-            {
-                token = token,
-                refreshToken = refreshToken
-            });
+            return Ok(new { token = token, refreshToken = refreshToken });
         }
 
         private string CreateToken(User user)
