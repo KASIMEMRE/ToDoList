@@ -62,3 +62,12 @@ Hatalı girişlerde ve yetkisiz erişimlerde standart HTTP 401/400 hataları dö
 🧪 Unit Testing (xUnit & Moq): İş mantığı, InMemory Database kullanılarak yazılan birim testleri ile %100 doğrulandı. Sahiplik kontrolü ve veri izolasyonu test edildi.
 
 🔍 Dinamik Filtreleme & Sıralama: Görevler arasında başlığa göre arama, tamamlanma durumuna göre filtreleme ve tarihe/isne göre sıralama özellikleri eklendi.
+
+--EKLENECEKLER--
+
+​🖥️ Frontend Entegrasyonu
+​Proje, kullanıcı etkileşimini artırmak adına modern bir arayüz ile desteklenmiştir:
+​Teknolojiler: React & TypeScript.
+​Güvenlik: JWT token'lar localStorage veya cookie üzerinden yönetilerek tüm isteklere otomatik eklenir.
+​Hız: Sayfalama ve filtreleme özellikleri kullanıcı dostu bir arayüzle sunulur.
+​Görünüm: Tailwind CSS ile hazırlanmış, mobil uyumlu (responsive) modern bir tasarım.
